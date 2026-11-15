@@ -1,8 +1,7 @@
-# Todo
+# todo
 
-- [ ] Finish the network: setup, forward, backward, step
-- [ ] Sanity checks: XOR, gradient check, overfit a small sample
-- [ ] Training loop with validation accuracy, reach >= 88 %
-- [ ] Proper prediction files, final test >= 88 %
-- [ ] Whole run under 600 s, clean unzip rerun matches
-- [ ] Explain and modify any line live
+- [ ] finish the network: setup, forward, backward, step
+- [ ] initial tests: XOR, gradient check, overfit a small sample
+- [ ] training loop with validation accuracy, reach >= 88 %
+- [ ] whole run under 600 s, test on aura
+- [ ] explain and modify any line live
