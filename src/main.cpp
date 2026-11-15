@@ -14,9 +14,9 @@ struct Config {
 };
 
 struct Dataset {
-  size_t image_size = 0;       // in number of pixels
-  std::vector<uint8_t> pixels; // size = rows *  image_size
-  std::vector<uint8_t> labels; // one per row
+  // one image per row, all rows the same length
+  std::vector<std::vector<uint8_t>> features;
+  std::vector<uint8_t> targets; // one per row
 };
 
 static bool fail(const std::string &msg) {
@@ -29,35 +29,33 @@ bool load_pixels(const std::string &path, Dataset &ds) {
   if (!in)
     return fail(path + ": cannot open");
 
-  ds.pixels.clear();
-  ds.image_size = 0;
+  ds.features.clear();
+  std::vector<uint8_t> row_px;
+  row_px.reserve(1024);
   std::string line;
-  size_t row = 0;
   while (std::getline(in, line)) {
+    row_px.clear();
     const char *p = line.c_str();
-    size_t cols = 0;
     for (;;) {
       char *end;
       const long v = strtol(p, &end, 10);
       if (end == p)
         break; // nothing left on this line
       if (v < 0 || v > 255)
-        return fail(path + ":" + std::to_string(row + 1) + ": bad value " +
-                    std::to_string(v));
-      ds.pixels.push_back(uint8_t(v));
-      ++cols;
+        return fail(path + ":" + std::to_string(ds.features.size() + 1) +
+                    ": bad value " + std::to_string(v));
+      row_px.push_back(uint8_t(v));
       if (*end != ',')
         break; // last field of the row
       p = end + 1;
     }
-    if (ds.image_size == 0)
-      ds.image_size = cols;
-    else if (cols != ds.image_size)
-      return fail(path + ":" + std::to_string(row + 1) + ": " +
-                  std::to_string(cols) + " fields");
-    ++row;
+    const size_t width = ds.features.empty() ? 0 : ds.features.front().size();
+    if (row_px.size() < 2 || (width != 0 && row_px.size() != width))
+      return fail(path + ":" + std::to_string(ds.features.size() + 1) + ": " +
+                  std::to_string(row_px.size()) + " fields");
+    ds.features.push_back(row_px);
   }
-  if (row == 0 || ds.image_size < 2)
+  if (ds.features.empty())
     return fail(path + ": no data");
   return true;
 }
@@ -67,7 +65,7 @@ bool load_labels(const std::string &path, Dataset &ds) {
   if (!in)
     return fail(path + ": cannot open");
 
-  ds.labels.clear();
+  ds.targets.clear();
   std::string line;
   while (std::getline(in, line)) {
     char *end;
@@ -75,16 +73,15 @@ bool load_labels(const std::string &path, Dataset &ds) {
     while (*end == '\r')
       ++end;
     if (end == line.c_str() || *end != '\0' || v < 0 || v > 9)
-      return fail(path + ":" + std::to_string(ds.labels.size() + 1) +
+      return fail(path + ":" + std::to_string(ds.targets.size() + 1) +
                   ": bad label");
-    ds.labels.push_back(uint8_t(v));
+    ds.targets.push_back(uint8_t(v));
   }
-  if (ds.image_size == 0)
-    return fail(path + ": load pixels first");
-  const size_t rows = ds.pixels.size() / ds.image_size;
-  if (ds.labels.size() != rows)
-    return fail(path + ": " + std::to_string(ds.labels.size()) +
-                " labels for " + std::to_string(rows) + " rows");
+  if (ds.features.empty())
+    return fail(path + ": load features first");
+  if (ds.targets.size() != ds.features.size())
+    return fail(path + ": " + std::to_string(ds.targets.size()) +
+                " targets for " + std::to_string(ds.features.size()) + " rows");
   return true;
 }
 
@@ -98,7 +95,7 @@ int main() {
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
   };
 
-  // 1. load train vectors + labels
+  // 1. load train vectors + targets
   Dataset train;
   Dataset test;
   if (!load_pixels(cfg.train_pixels, train)) {
@@ -111,9 +108,9 @@ int main() {
     exit(1);
   };
 
-  std::cerr << "train " << train.pixels.size() / train.image_size << "x"
-            << train.image_size << ", test "
-            << test.pixels.size() / test.image_size << "x" << test.image_size
+  std::cerr << "train " << train.features.size() << "x"
+            << train.features.front().size() << ", test "
+            << test.features.size() << "x" << test.features.front().size()
             << '\n';
 
   // 2. carve validation slice out of train
