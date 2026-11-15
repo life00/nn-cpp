@@ -1,13 +1,16 @@
+#include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 struct Config {
   int seed = 0;
   int epochs = 0;
+  double val_share = 0;
   std::string train_pixels;
   std::string train_labels;
   std::string test_pixels;
@@ -85,11 +88,30 @@ bool load_labels(const std::string &path, Dataset &ds) {
   return true;
 }
 
+Dataset create_validation(const double share, Dataset &train) {
+  Dataset val;
+  const size_t n = train.features.size();
+  const size_t n_val = size_t(share * double(n));
+  if (n_val == 0 || n_val >= n || train.targets.size() != n)
+    return val; // no split
+  const size_t n_train = n - n_val;
+  val.features.assign(std::make_move_iterator(train.features.begin() + n_train),
+                      std::make_move_iterator(train.features.end()));
+  val.targets.assign(std::make_move_iterator(train.targets.begin() + n_train),
+                     std::make_move_iterator(train.targets.end()));
+  train.features.resize(n_train);
+  train.targets.resize(n_train);
+  assert(val.features.size() == n_val && train.features.size() == n_train);
+  assert(val.targets.size() == n_val && train.targets.size() == n_train);
+  return val;
+}
+
 int main() {
   // 0. config: seed, epochs, data paths
   Config cfg = Config{
       .seed = 0, // allowed: 0,1,2,3,42
       .epochs = 10,
+      .val_share = 0.1, // validation share of training dataset
       .train_pixels = "data/fashion_mnist_train_vectors.csv",
       .train_labels = "data/fashion_mnist_train_labels.csv",
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
@@ -107,13 +129,15 @@ int main() {
   if (!load_pixels(cfg.test_pixels, test)) {
     exit(1);
   };
+  // 2. carve validation slice out of train
+  Dataset val = create_validation(cfg.val_share, train);
 
-  std::cerr << "train " << train.features.size() << "x"
-            << train.features.front().size() << ", test "
+  std::cout << "train " << train.features.size() << "x"
+            << train.features.front().size() << ", val " << val.features.size()
+            << "x" << val.features.front().size() << ", test "
             << test.features.size() << "x" << test.features.front().size()
             << '\n';
 
-  // 2. carve validation slice out of train
   // 3. create network
   // 4. define loss function
   // 5. define optimizer
