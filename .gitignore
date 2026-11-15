@@ -1,2 +1,4 @@
 network
+test_predictions.csv
+train_predictions.csv
 data/

@@ -14,6 +14,8 @@ struct Config {
   std::string train_pixels;
   std::string train_labels;
   std::string test_pixels;
+  std::string train_predictions;
+  std::string test_predictions;
 };
 
 struct Dataset {
@@ -27,7 +29,7 @@ static bool fail(const std::string &msg) {
   return false;
 }
 
-bool load_pixels(const std::string &path, Dataset &ds) {
+bool load_features(const std::string &path, Dataset &ds) {
   std::ifstream in(path);
   if (!in)
     return fail(path + ": cannot open");
@@ -63,7 +65,7 @@ bool load_pixels(const std::string &path, Dataset &ds) {
   return true;
 }
 
-bool load_labels(const std::string &path, Dataset &ds) {
+bool load_targets(const std::string &path, Dataset &ds) {
   std::ifstream in(path);
   if (!in)
     return fail(path + ": cannot open");
@@ -106,6 +108,18 @@ Dataset create_validation(const double share, Dataset &train) {
   return val;
 }
 
+bool save_targets(const std::string &path, const std::vector<uint8_t> &labels) {
+  std::ofstream out(path);
+  if (!out)
+    return fail(path + ": cannot open");
+  for (const uint8_t label : labels)
+    out << unsigned(label) << '\n'; // uint8_t streams as a char, requires cast
+  out.close();
+  if (!out)
+    return fail(path + ": write failed");
+  return true;
+}
+
 int main() {
   // 0. config: seed, epochs, data paths
   Config cfg = Config{
@@ -115,18 +129,20 @@ int main() {
       .train_pixels = "data/fashion_mnist_train_vectors.csv",
       .train_labels = "data/fashion_mnist_train_labels.csv",
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
+      .train_predictions = "train_predictions.csv",
+      .test_predictions = "test_predictions.csv",
   };
 
   // 1. load train vectors + targets
   Dataset train;
   Dataset test;
-  if (!load_pixels(cfg.train_pixels, train)) {
+  if (!load_features(cfg.train_pixels, train)) {
     exit(1);
   };
-  if (!load_labels(cfg.train_labels, train)) {
+  if (!load_targets(cfg.train_labels, train)) {
     exit(1);
   };
-  if (!load_pixels(cfg.test_pixels, test)) {
+  if (!load_features(cfg.test_pixels, test)) {
     exit(1);
   };
   // 2. carve validation slice out of train
@@ -154,6 +170,10 @@ int main() {
   //    check 600s budget
   // 7. write train predictions
   // 8. write test predictions
+  if (!save_targets(cfg.train_predictions, train.targets) ||
+      !save_targets(cfg.test_predictions, test.targets)) {
+    exit(1);
+  }
 
   std::cout << "thinking...";
   return 0;
