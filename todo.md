@@ -1,13 +1,13 @@
 # Todo
 
-- [ ] Gate 1: the program writes both prediction files; evaluator on constants prints 0.1000 (no model yet)
-- [ ] Network core: setup, forward, backward, step
-- [ ] Gate 2: XOR
-- [ ] Gate 3: gradient check
-- [ ] Gate 4: overfit a small sample
-- [ ] Training loop: shuffling, per-epoch validation accuracy
-- [ ] Gate 5: validation >= 88 % on the train split
-- [ ] Timing: one full run comfortably under 600 s
-- [ ] Gate 6: test accuracy >= 0.8800
-- [ ] Gate 7: clean unzip rerun reproduces it
-- [ ] Consultation prep: explain any line, change it live
+- [ ] Write both prediction files properly (test file is empty today)
+- [ ] Finish the network: setup, forward, backward, step
+- [ ] Sanity check on XOR
+- [ ] Gradient check against finite differences
+- [ ] Overfit a small sample
+- [ ] Training loop with per-epoch validation accuracy
+- [ ] Reach >= 88 % on validation
+- [ ] Whole run comfortably under 600 s
+- [ ] Final test pass >= 88 %
+- [ ] Clean rerun from an unzipped copy gives the same result
+- [ ] Be able to explain and modify any line live
