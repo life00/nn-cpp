@@ -22,8 +22,8 @@ struct Net {
   std::vector<std::vector<double>> gb;              // gb[l][j] = dE/dw_j0
 };
 
-// w[l]: widths[l] x widths[l-1]; initializes w_ji, w_j0 from rng
-void setup(Net &net, const std::vector<std::size_t> &widths,
+// w[l]: widths[l] x widths[l-1]; w_ji, w_j0 ~ N(0, 1/widths[l-1])
+bool setup(Net &net, const std::vector<std::size_t> &widths,
            const std::vector<Act> &acts, std::mt19937 &rng);
 
 // dE/dw_ji := 0

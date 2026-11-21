@@ -1,4 +1,5 @@
 #include "io.hpp"
+#include "net.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -8,6 +9,8 @@ struct Config {
   int seed = 0;
   int epochs = 0;
   double val_share = 0;
+  std::vector<std::size_t> widths; // |layer 0|..|layer L|
+  std::vector<Act> acts;           // sigma_j for layers 1..L
   std::string train_pixels;
   std::string train_labels;
   std::string test_pixels;
@@ -16,11 +19,13 @@ struct Config {
 };
 
 int main() {
-  // 0. config: seed, epochs, data paths
+  // 0. config: seed, epochs, topology, data paths
   Config cfg = Config{
       .seed = 0, // allowed: 0,1,2,3,42
       .epochs = 10,
-      .val_share = 0.1, // validation share of training dataset
+      .val_share = 0.1,         // validation share of training dataset
+      .widths = {784, 128, 10}, // input, hidden, output;
+      .acts = {Act::sigmoid, Act::sigmoid},
       .train_pixels = "data/fashion_mnist_train_vectors.csv",
       .train_labels = "data/fashion_mnist_train_labels.csv",
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
@@ -50,6 +55,12 @@ int main() {
             << '\n';
 
   // 3. create network
+  std::mt19937 rng(cfg.seed);
+  Net net;
+  if (!setup(net, cfg.widths, cfg.acts, rng)) {
+    exit(1);
+  }
+
   // 4. define loss function
   // 5. define optimizer
   // 6. training loop until epoch == n:
