@@ -44,22 +44,22 @@ bool setup(Net &net, const std::vector<std::size_t> &widths,
   net.sigma.insert(net.sigma.end(), acts.begin(), acts.end());
   net.xi.assign(L + 1, {});
   net.y.assign(L + 1, {});
-  net.ey.assign(L + 1, {});
+  net.dey.assign(L + 1, {});
   net.w.assign(L + 1, {});
   net.b.assign(L + 1, {});
-  net.gw.assign(L + 1, {});
-  net.gb.assign(L + 1, {});
+  net.dew.assign(L + 1, {});
+  net.deb.assign(L + 1, {});
   net.y[0].assign(widths[0], 0.0); // y[0] = x_k
 
   for (std::size_t l = 1; l <= L; ++l) {
     const std::size_t n = widths[l], n_in = widths[l - 1];
     net.xi[l].assign(n, 0.0);
     net.y[l].assign(n, 0.0);
-    net.ey[l].assign(n, 0.0);
+    net.dey[l].assign(n, 0.0);
     net.b[l].assign(n, 0.0);
-    net.gb[l].assign(n, 0.0);
+    net.deb[l].assign(n, 0.0);
     net.w[l].assign(n, std::vector<double>(n_in, 0.0));
-    net.gw[l].assign(n, std::vector<double>(n_in, 0.0));
+    net.dew[l].assign(n, std::vector<double>(n_in, 0.0));
 
     // Normal LeCun initialization
     std::normal_distribution<double> N(0.0,
@@ -92,17 +92,44 @@ void forward(Net &net, const double *x) {
 
 void clear_grad(Net &net) {
   for (std::size_t l = 1; l < net.widths.size(); ++l) {
-    for (std::vector<double> &gw_j : net.gw[l]) {
-      std::fill(gw_j.begin(), gw_j.end(), 0.0); // dE/dw_ji := 0
+    for (std::vector<double> &dew_j : net.dew[l]) {
+      std::fill(dew_j.begin(), dew_j.end(), 0.0); // dE/dw_ji := 0
     }
-    std::fill(net.gb[l].begin(), net.gb[l].end(), 0.0); // dE/dw_j0 := 0
+    std::fill(net.deb[l].begin(), net.deb[l].end(), 0.0); // dE/dw_j0 := 0
   }
 }
 
-// output:  dE_k/dy_j = y_j - d_kj
-// hidden:  dE_k/dy_j = sum_{r in j->} dE_k/dy_r sigma_r'(xi_r) w_rj
-// weights: dE/dw_ji += (1/p) dE_k/dy_j sigma_j'(xi_j) y_i   (y_0 = 1)
-void backward(Net &, const double *, std::size_t) {}
+void backward(Net &net, const double *d, const std::size_t p) {
+  const std::size_t L = net.widths.size() - 1;
+
+  for (std::size_t j = 0; j < net.widths[L]; ++j) {
+    net.dey[L][j] = net.y[L][j] - d[j]; // dE_k/dy_j = y_j - d_kj
+  }
+
+  for (std::size_t l = L - 1; l >= 1; --l) {
+    for (std::size_t j = 0; j < net.widths[l]; ++j) {
+      double dey_j = 0.0;
+      for (std::size_t r = 0; r < net.widths[l + 1]; ++r) {
+        const double dyxi = dact(net.sigma[l + 1], net.xi[l + 1][r],
+                                 net.y[l + 1][r]); // dy_r/dxi_r = sigma_r'(xi_r)
+        dey_j += net.dey[l + 1][r] * dyxi * net.w[l + 1][r][j]; // dE_k/dy_r sigma_r'(xi_r) w_rj
+      }
+      net.dey[l][j] = dey_j; // dE_k/dy_j = sum_{r in j->} ...
+    }
+  }
+
+  for (std::size_t l = 1; l <= L; ++l) {
+    for (std::size_t j = 0; j < net.widths[l]; ++j) {
+      const double dyxi = dact(net.sigma[l], net.xi[l][j], net.y[l][j]); // dy_j/dxi_j = sigma_j'(xi_j)
+      for (std::size_t i = 0; i < net.widths[l - 1]; ++i) {
+        const double dew_k = net.dey[l][j] * dyxi * net.y[l - 1][i]; // dE_k/dw_ji = dE_k/dy_j sigma_j'(xi_j) y_i
+        net.dew[l][j][i] += dew_k / p; // dE/dw_ji += (1/p) dE_k/dw_ji
+      }
+      const double deb_k = net.dey[l][j] * dyxi * 1.0; // dE_k/dw_j0 = dE_k/dy_j sigma_j'(xi_j) y_0, y_0 = 1
+      net.deb[l][j] += deb_k / p; // dE/dw_j0 += (1/p) dE_k/dw_j0
+    }
+  }
+}
 
 // w_ji := w_ji - eps dE/dw_ji
 void step(Net &, double) {}

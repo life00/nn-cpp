@@ -18,6 +18,7 @@ int main() {
   clear_grad(net); // dE/dw_ji := 0
   for (std::size_t k = 0; k < 4; ++k) {
     forward(net, x[k]);
+    backward(net, d[k], 4); // p = 4
     std::cout << "x_k = (" << x[k][0] << ", " << x[k][1]
               << ")  d_k = " << d[k][0] << "  y = " << net.y.back()[0] << '\n';
   }
@@ -27,6 +28,10 @@ int main() {
                 << "  w_ji =";
       for (const double w_ji : net.w[l][j]) {
         std::cout << ' ' << w_ji;
+      }
+      std::cout << "  dE/dw_j0 = " << net.deb[l][j] << "  dE/dw_ji =";
+      for (const double dew_ji : net.dew[l][j]) {
+        std::cout << ' ' << dew_ji;
       }
       std::cout << '\n';
     }

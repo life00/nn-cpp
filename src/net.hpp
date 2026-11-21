@@ -15,11 +15,11 @@ struct Net {
   std::vector<Act> sigma;                           // sigma[l] = sigma_j
   std::vector<std::vector<double>> xi;              // xi[l][j] = xi_j
   std::vector<std::vector<double>> y;               // y[l][j] = y_j
-  std::vector<std::vector<double>> ey;              // ey[l][j] = dE_k/dy_j
+  std::vector<std::vector<double>> dey;             // dey[l][j] = dE_k/dy_j
   std::vector<std::vector<std::vector<double>>> w;  // w[l][j][i] = w_ji
   std::vector<std::vector<double>> b;               // b[l][j] = w_j0
-  std::vector<std::vector<std::vector<double>>> gw; // gw[l][j][i] = dE/dw_ji
-  std::vector<std::vector<double>> gb;              // gb[l][j] = dE/dw_j0
+  std::vector<std::vector<std::vector<double>>> dew; // dew[l][j][i] = dE/dw_ji
+  std::vector<std::vector<double>> deb;             // deb[l][j] = dE/dw_j0
 };
 
 // w[l]: widths[l] x widths[l-1]; w_ji, w_j0 ~ N(0, 1/widths[l-1])
