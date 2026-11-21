@@ -131,5 +131,13 @@ void backward(Net &net, const double *d, const std::size_t p) {
   }
 }
 
-// w_ji := w_ji - eps dE/dw_ji
-void step(Net &, double) {}
+void step(Net &net, const double eps) {
+  for (std::size_t l = 1; l < net.widths.size(); ++l) {
+    for (std::size_t j = 0; j < net.widths[l]; ++j) {
+      for (std::size_t i = 0; i < net.widths[l - 1]; ++i) {
+        net.w[l][j][i] -= eps * net.dew[l][j][i]; // w_ji := w_ji - eps dE/dw_ji
+      }
+      net.b[l][j] -= eps * net.deb[l][j]; // w_j0 := w_j0 - eps dE/dw_j0
+    }
+  }
+}
