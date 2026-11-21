@@ -4,36 +4,36 @@
 #include <random>
 #include <vector>
 
-// xi_j = inner potential, y_j = output of node j,
-// w_ji = weight i -> j, w_j0 = b_j (bias),
-// sigma_j = activation of node j.
-
 enum class Act { sigmoid, relu };
 
-double act(Act sigma, double xi);  // y_j = sigma_j(xi_j)
-double dact(Act sigma, double xi); // sigma_j'(xi_j)
+double act(Act sigma, double xi);            // y_j = sigma_j(xi_j)
+double dact(Act sigma, double xi, double y); // sigma_j'(xi_j)
 
+// indexed by layer l = 0..L; slot 0 unused except y[0] = x_k
 struct Net {
-  std::vector<std::size_t> widths;                  // widths[0] = input size
-  std::vector<Act> acts;                            // sigma per non-input layer
+  std::vector<std::size_t> widths;                  // widths[l] = |layer l|
+  std::vector<Act> sigma;                           // sigma[l] = sigma_j
+  std::vector<std::vector<double>> xi;              // xi[l][j] = xi_j
+  std::vector<std::vector<double>> y;               // y[l][j] = y_j
+  std::vector<std::vector<double>> ey;              // ey[l][j] = dE_k/dy_j
   std::vector<std::vector<std::vector<double>>> w;  // w[l][j][i] = w_ji
-  std::vector<std::vector<std::vector<double>>> gw; // dE/dw_ji
   std::vector<std::vector<double>> b;               // b[l][j] = w_j0
-  std::vector<std::vector<double>> gb;              // dE/dw_j0
-  std::vector<std::vector<std::vector<double>>> xi; // [l][k][j] = xi_j of x_k
-  std::vector<std::vector<std::vector<double>>> y;  // [l][k][j] = y_j; y[0] = x
-  std::size_t batch = 0; // scratch capacity; calls pass n <= batch
+  std::vector<std::vector<std::vector<double>>> gw; // gw[l][j][i] = dE/dw_ji
+  std::vector<std::vector<double>> gb;              // gb[l][j] = dE/dw_j0
 };
 
-// sizes every buffer once, asserts the shapes, initializes w/b from rng
+// w[l]: widths[l] x widths[l-1]; initializes w_ji, w_j0 from rng
 void setup(Net &net, const std::vector<std::size_t> &widths,
-           const std::vector<Act> &acts, std::size_t batch, std::mt19937 &rng);
+           const std::vector<Act> &acts, std::mt19937 &rng);
 
-// fills xi/y for the first n rows of x; the output lands in y.back()
-void forward(Net &net, const double *x, std::size_t n);
+// dE/dw_ji := 0
+void clear_grad(Net &net);
 
-// fills gw/gb = (1/n) * sum_k dE_k/dw from xi/y and the d_kj in d
-void backward(Net &net, const unsigned char *d, std::size_t n);
+// xi_j = sum_{i in j<-} w_ji y_i (y_0 = 1), y_j = sigma_j(xi_j)
+void forward(Net &net, const double *x);
 
-// w_ji -= lr * gw, b_j -= lr * gb
-void step(Net &net, double lr);
+// dE/dw_ji += (1/p) dE_k/dw_ji, dE_k/dw_ji = dE_k/dy_j sigma_j'(xi_j) y_i
+void backward(Net &net, const double *d, std::size_t p);
+
+// w_ji := w_ji - eps dE/dw_ji
+void step(Net &net, double eps);
