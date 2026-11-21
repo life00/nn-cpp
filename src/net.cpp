@@ -73,13 +73,24 @@ bool setup(Net &net, const std::vector<std::size_t> &widths,
   return true;
 }
 
+void forward(Net &net, const double *x) {
+  for (std::size_t i = 0; i < net.widths[0]; ++i) {
+    net.y[0][i] = x[i]; // y[0] = x_k
+  }
+  for (std::size_t l = 1; l < net.widths.size(); ++l) {
+    for (std::size_t j = 0; j < net.widths[l]; ++j) {
+      double xi = net.b[l][j]; // w_j0 y_0, y_0 = 1
+      for (std::size_t i = 0; i < net.widths[l - 1]; ++i) {
+        xi += net.w[l][j][i] * net.y[l - 1][i]; // + w_ji y_i
+      }
+      net.xi[l][j] = xi;                   // xi_j
+      net.y[l][j] = act(net.sigma[l], xi); // y_j = sigma_j(xi_j)
+    }
+  }
+}
+
 // dE/dw_ji := 0
 void clear_grad(Net &) {}
-
-// y[0] = x_k; l = 1..L:
-//   xi_j = w_j0 + sum_{i in j<-} w_ji y_i
-//   y_j = sigma_j(xi_j)
-void forward(Net &, const double *) {}
 
 // output:  dE_k/dy_j = y_j - d_kj
 // hidden:  dE_k/dy_j = sum_{r in j->} dE_k/dy_r sigma_r'(xi_r) w_rj

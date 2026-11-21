@@ -16,8 +16,9 @@ int main() {
   }
 
   for (std::size_t k = 0; k < 4; ++k) {
+    forward(net, x[k]);
     std::cout << "x_k = (" << x[k][0] << ", " << x[k][1]
-              << ")  d_k = " << d[k][0] << '\n';
+              << ")  d_k = " << d[k][0] << "  y = " << net.y.back()[0] << '\n';
   }
   for (std::size_t l = 1; l < net.widths.size(); ++l) {
     for (std::size_t j = 0; j < net.widths[l]; ++j) {
