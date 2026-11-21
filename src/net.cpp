@@ -1,6 +1,7 @@
 #include "net.hpp"
 #include "io.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 double act(const Act sigma, const double xi) {
@@ -89,8 +90,14 @@ void forward(Net &net, const double *x) {
   }
 }
 
-// dE/dw_ji := 0
-void clear_grad(Net &) {}
+void clear_grad(Net &net) {
+  for (std::size_t l = 1; l < net.widths.size(); ++l) {
+    for (std::vector<double> &gw_j : net.gw[l]) {
+      std::fill(gw_j.begin(), gw_j.end(), 0.0); // dE/dw_ji := 0
+    }
+    std::fill(net.gb[l].begin(), net.gb[l].end(), 0.0); // dE/dw_j0 := 0
+  }
+}
 
 // output:  dE_k/dy_j = y_j - d_kj
 // hidden:  dE_k/dy_j = sum_{r in j->} dE_k/dy_r sigma_r'(xi_r) w_rj

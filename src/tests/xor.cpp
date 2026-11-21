@@ -15,6 +15,7 @@ int main() {
     exit(1);
   }
 
+  clear_grad(net); // dE/dw_ji := 0
   for (std::size_t k = 0; k < 4; ++k) {
     forward(net, x[k]);
     std::cout << "x_k = (" << x[k][0] << ", " << x[k][1]
