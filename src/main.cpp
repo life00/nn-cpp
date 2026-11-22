@@ -36,22 +36,22 @@ int main() {
   // 1. load train vectors + targets
   Dataset train;
   Dataset test;
-  if (!load_features(cfg.train_pixels, train)) {
+  if (!train.load_features(cfg.train_pixels)) {
     exit(1);
   };
-  if (!load_targets(cfg.train_labels, train)) {
+  if (!train.load_targets(cfg.train_labels)) {
     exit(1);
   };
-  if (!load_features(cfg.test_pixels, test)) {
+  if (!test.load_features(cfg.test_pixels)) {
     exit(1);
   };
   // 2. carve validation slice out of train
-  Dataset val = create_validation(cfg.val_share, train);
+  Dataset val = train.create_validation(cfg.val_share);
 
-  std::cout << "train " << train.features.size() << "x"
-            << train.features.front().size() << ", val " << val.features.size()
-            << "x" << val.features.front().size() << ", test "
-            << test.features.size() << "x" << test.features.front().size()
+  std::cout << "train " << train.features().size() << "x"
+            << train.features().front().size() << ", val " << val.features().size()
+            << "x" << val.features().front().size() << ", test "
+            << test.features().size() << "x" << test.features().front().size()
             << '\n';
 
   // 3. create network
@@ -73,8 +73,8 @@ int main() {
   //    check 600s budget
   // 7. write train predictions
   // 8. write test predictions
-  if (!save_targets(cfg.train_predictions, train.targets) ||
-      !save_targets(cfg.test_predictions, test.targets)) {
+  if (!Dataset::save_targets(cfg.train_predictions, train.targets()) ||
+      !Dataset::save_targets(cfg.test_predictions, test.targets())) {
     exit(1);
   }
 

@@ -1,9 +1,9 @@
 #include "net.hpp"
-#include "io.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 
 Network::Network(const std::vector<std::size_t> &widths,
                  const std::vector<Act> &acts, std::mt19937 &rng)
@@ -122,6 +122,11 @@ void Network::step(const double eps) {
 
 const std::vector<double> &Network::output() {
   return y.back(); // y[L]
+}
+
+bool Network::fail(const std::string &msg) {
+  std::cerr << msg << '\n';
+  return false;
 }
 
 bool Network::check(const std::vector<std::size_t> &widths,

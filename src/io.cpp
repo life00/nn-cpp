@@ -6,17 +6,17 @@
 #include <iostream>
 #include <iterator>
 
-bool fail(const std::string &msg) {
+bool Dataset::fail(const std::string &msg) {
   std::cerr << msg << '\n';
   return false;
 }
 
-bool load_features(const std::string &path, Dataset &ds) {
+bool Dataset::load_features(const std::string &path) {
   std::ifstream in(path);
   if (!in)
     return fail(path + ": cannot open");
 
-  ds.features.clear();
+  pixels.clear();
   std::vector<uint8_t> row_px;
   row_px.reserve(1024);
   std::string line;
@@ -29,30 +29,30 @@ bool load_features(const std::string &path, Dataset &ds) {
       if (end == p)
         break; // nothing left on this line
       if (v < 0 || v > 255)
-        return fail(path + ":" + std::to_string(ds.features.size() + 1) +
+        return fail(path + ":" + std::to_string(pixels.size() + 1) +
                     ": bad value " + std::to_string(v));
       row_px.push_back(uint8_t(v));
       if (*end != ',')
         break; // last field of the row
       p = end + 1;
     }
-    const size_t width = ds.features.empty() ? 0 : ds.features.front().size();
+    const size_t width = pixels.empty() ? 0 : pixels.front().size();
     if (row_px.size() < 2 || (width != 0 && row_px.size() != width))
-      return fail(path + ":" + std::to_string(ds.features.size() + 1) + ": " +
+      return fail(path + ":" + std::to_string(pixels.size() + 1) + ": " +
                   std::to_string(row_px.size()) + " fields");
-    ds.features.push_back(row_px);
+    pixels.push_back(row_px);
   }
-  if (ds.features.empty())
+  if (pixels.empty())
     return fail(path + ": no data");
   return true;
 }
 
-bool load_targets(const std::string &path, Dataset &ds) {
+bool Dataset::load_targets(const std::string &path) {
   std::ifstream in(path);
   if (!in)
     return fail(path + ": cannot open");
 
-  ds.targets.clear();
+  labels.clear();
   std::string line;
   while (std::getline(in, line)) {
     char *end;
@@ -60,38 +60,47 @@ bool load_targets(const std::string &path, Dataset &ds) {
     while (*end == '\r')
       ++end;
     if (end == line.c_str() || *end != '\0' || v < 0 || v > 9)
-      return fail(path + ":" + std::to_string(ds.targets.size() + 1) +
+      return fail(path + ":" + std::to_string(labels.size() + 1) +
                   ": bad label");
-    ds.targets.push_back(uint8_t(v));
+    labels.push_back(uint8_t(v));
   }
-  if (ds.features.empty())
+  if (pixels.empty())
     return fail(path + ": load features first");
-  if (ds.targets.size() != ds.features.size())
-    return fail(path + ": " + std::to_string(ds.targets.size()) +
-                " targets for " + std::to_string(ds.features.size()) + " rows");
+  if (labels.size() != pixels.size())
+    return fail(path + ": " + std::to_string(labels.size()) +
+                " targets for " + std::to_string(pixels.size()) + " rows");
   return true;
 }
 
-Dataset create_validation(const double share, Dataset &train) {
+Dataset Dataset::create_validation(const double share) {
   Dataset val;
-  const size_t n = train.features.size();
-  // val is the tail of train, so train || val is the original input order
+  const size_t n = pixels.size();
+  // val is the tail of this, so this || val is the original input order
   const size_t n_val = size_t(share * double(n));
-  if (n_val == 0 || n_val >= n || train.targets.size() != n)
+  if (n_val == 0 || n_val >= n || labels.size() != n)
     return val; // no split
   const size_t n_train = n - n_val;
-  val.features.assign(std::make_move_iterator(train.features.begin() + n_train),
-                      std::make_move_iterator(train.features.end()));
-  val.targets.assign(std::make_move_iterator(train.targets.begin() + n_train),
-                     std::make_move_iterator(train.targets.end()));
-  train.features.resize(n_train);
-  train.targets.resize(n_train);
-  assert(val.features.size() == n_val && train.features.size() == n_train);
-  assert(val.targets.size() == n_val && train.targets.size() == n_train);
+  val.pixels.assign(std::make_move_iterator(pixels.begin() + n_train),
+                    std::make_move_iterator(pixels.end()));
+  val.labels.assign(std::make_move_iterator(labels.begin() + n_train),
+                    std::make_move_iterator(labels.end()));
+  pixels.resize(n_train);
+  labels.resize(n_train);
+  assert(val.pixels.size() == n_val && pixels.size() == n_train);
+  assert(val.labels.size() == n_val && labels.size() == n_train);
   return val;
 }
 
-bool save_targets(const std::string &path, const std::vector<uint8_t> &labels) {
+const std::vector<std::vector<uint8_t>> &Dataset::features() {
+  return pixels;
+}
+
+const std::vector<uint8_t> &Dataset::targets() {
+  return labels;
+}
+
+bool Dataset::save_targets(const std::string &path,
+                           const std::vector<uint8_t> &labels) {
   std::ofstream out(path);
   if (!out)
     return fail(path + ": cannot open");

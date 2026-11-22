@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <random>
+#include <string>
 #include <vector>
 
 enum class Act { sigmoid, relu };
@@ -30,6 +31,7 @@ public:
   const std::vector<double> &output();
 
 private:
+  static bool fail(const std::string &msg);
   static bool check(const std::vector<std::size_t> &widths,
                     const std::vector<Act> &acts);
   static double act(Act sigma, double xi);            // y_j = sigma_j(xi_j)
