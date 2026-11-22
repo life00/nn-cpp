@@ -6,3 +6,4 @@
 - [ ] training loop with validation accuracy, reach >= 88 %
 - [ ] whole run under 600 s, test on aura
 - [ ] explain and modify any line live
+- [ ] include derivation
