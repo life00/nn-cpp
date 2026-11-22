@@ -56,10 +56,7 @@ int main() {
 
   // 3. create network
   std::mt19937 rng(cfg.seed);
-  Net net;
-  if (!setup(net, cfg.widths, cfg.acts, rng)) {
-    exit(1);
-  }
+  Network net(cfg.widths, cfg.acts, rng);
 
   // 4. define loss function
   // 5. define optimizer
