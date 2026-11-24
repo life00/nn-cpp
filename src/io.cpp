@@ -17,7 +17,7 @@ bool Dataset::load_features(const std::string &path) {
     return fail(path + ": cannot open");
 
   pixels.clear();
-  std::vector<uint8_t> row_px;
+  std::vector<double> row_px;
   row_px.reserve(1024);
   std::string line;
   while (std::getline(in, line)) {
@@ -31,7 +31,7 @@ bool Dataset::load_features(const std::string &path) {
       if (v < 0 || v > 255)
         return fail(path + ":" + std::to_string(pixels.size() + 1) +
                     ": bad value " + std::to_string(v));
-      row_px.push_back(uint8_t(v));
+      row_px.push_back(v / 255.0); // x_k = pixel / 255
       if (*end != ',')
         break; // last field of the row
       p = end + 1;
@@ -62,13 +62,13 @@ bool Dataset::load_targets(const std::string &path) {
     if (end == line.c_str() || *end != '\0' || v < 0 || v > 9)
       return fail(path + ":" + std::to_string(labels.size() + 1) +
                   ": bad label");
-    labels.push_back(uint8_t(v));
+    labels.push_back(double(v));
   }
   if (pixels.empty())
     return fail(path + ": load features first");
   if (labels.size() != pixels.size())
-    return fail(path + ": " + std::to_string(labels.size()) +
-                " targets for " + std::to_string(pixels.size()) + " rows");
+    return fail(path + ": " + std::to_string(labels.size()) + " targets for " +
+                std::to_string(pixels.size()) + " rows");
   return true;
 }
 
@@ -91,21 +91,28 @@ Dataset Dataset::create_validation(const double share) {
   return val;
 }
 
-const std::vector<std::vector<uint8_t>> &Dataset::features() {
+const std::vector<std::vector<double>> &Dataset::features() const {
   return pixels;
 }
 
-const std::vector<uint8_t> &Dataset::targets() {
-  return labels;
+const std::vector<double> &Dataset::targets() const { return labels; }
+
+double Dataset::accuracy(const std::vector<double> &predictions) const {
+  assert(predictions.size() == labels.size());
+  size_t correct = 0;
+  for (size_t k = 0; k < labels.size(); ++k) {
+    correct += predictions[k] == labels[k];
+  }
+  return double(correct) / labels.size();
 }
 
-bool Dataset::save_targets(const std::string &path,
-                           const std::vector<uint8_t> &labels) {
+bool Dataset::save_predictions(const std::string &path,
+                               const std::vector<double> &predictions) {
   std::ofstream out(path);
   if (!out)
     return fail(path + ": cannot open");
-  for (const uint8_t label : labels)
-    out << unsigned(label) << '\n'; // uint8_t streams as a char, requires cast
+  for (const double label : predictions)
+    out << label << '\n'; // whole doubles stream as bare digits
   out.close();
   if (!out)
     return fail(path + ": write failed");

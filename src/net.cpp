@@ -46,9 +46,9 @@ Network::Network(const std::vector<std::size_t> &widths,
   }
 }
 
-void Network::forward(const double *x) {
+void Network::forward(const std::vector<double> &x_k) {
   for (std::size_t i = 0; i < widths[0]; ++i) {
-    y[0][i] = x[i]; // y[0] = x_k
+    y[0][i] = x_k[i]; // y[0] = x_k
   }
   for (std::size_t l = 1; l < widths.size(); ++l) {
     for (std::size_t j = 0; j < widths[l]; ++j) {
@@ -71,11 +71,12 @@ void Network::clear_grad() {
   }
 }
 
-void Network::backward(const double *d, const std::size_t p) {
+void Network::backward(const double d_k, const std::size_t p) {
   const std::size_t L = widths.size() - 1;
 
   for (std::size_t j = 0; j < widths[L]; ++j) {
-    dey[L][j] = y[L][j] - d[j]; // dE_k/dy_j = y_j - d_kj
+    const double d_kj = j == d_k ? 1.0 : 0.0;
+    dey[L][j] = y[L][j] - d_kj; // dE_k/dy_j = y_j - d_kj
   }
 
   for (std::size_t l = L - 1; l >= 1; --l) {
@@ -120,8 +121,24 @@ void Network::step(const double eps) {
   }
 }
 
-const std::vector<double> &Network::output() {
-  return y.back(); // y[L]
+double Network::loss(const double d_k) {
+  const std::size_t L = widths.size() - 1;
+  double E_k = 0.0; // E_k = 1/2 sum_j (y_j - d_kj)^2
+  for (std::size_t j = 0; j < widths[L]; ++j) {
+    const double d_kj = j == d_k ? 1.0 : 0.0;
+    E_k += 0.5 * (y[L][j] - d_kj) * (y[L][j] - d_kj);
+  }
+  return E_k;
+}
+
+void Network::predict(const std::vector<std::vector<double>> &x,
+                      std::vector<double> &out) {
+  const std::size_t L = widths.size() - 1;
+  for (const std::vector<double> &x_k : x) {
+    forward(x_k);
+    out.push_back(double(std::max_element(y[L].begin(), y[L].end()) -
+                         y[L].begin())); // argmax_j y_j
+  }
 }
 
 bool Network::fail(const std::string &msg) {

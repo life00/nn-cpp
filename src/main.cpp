@@ -1,83 +1,134 @@
 #include "io.hpp"
 #include "net.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <random>
 #include <string>
+#include <vector>
 
 struct Config {
-  int seed = 0;
-  int epochs = 0;
-  double val_share = 0;
-  std::vector<std::size_t> widths; // |layer 0|..|layer L|
-  std::vector<Act> acts;           // sigma_j for layers 1..L
   std::string train_pixels;
   std::string train_labels;
   std::string test_pixels;
   std::string train_predictions;
   std::string test_predictions;
+  double val_share = 0;
+  int seed = 0;
+  int epochs = 0;
+  std::size_t batch_size = 0;
+  double epsilon = 0;
+  std::vector<std::size_t> widths;
+  std::vector<Act> acts;
 };
 
 int main() {
-  // 0. config: seed, epochs, topology, data paths
   Config cfg = Config{
-      .seed = 0, // allowed: 0,1,2,3,42
-      .epochs = 10,
-      .val_share = 0.1,         // validation share of training dataset
-      .widths = {784, 128, 10}, // input, hidden, output;
-      .acts = {Act::sigmoid, Act::sigmoid},
+      // data parameters
       .train_pixels = "data/fashion_mnist_train_vectors.csv",
       .train_labels = "data/fashion_mnist_train_labels.csv",
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
       .train_predictions = "train_predictions.csv",
       .test_predictions = "test_predictions.csv",
+      .val_share = 0.0,
+      // training parameters
+      .seed = 42,
+      .epochs = 50,
+      .batch_size = 32,
+      .epsilon = 0.5,
+      .widths = {784, 128, 10},
+      .acts = {Act::relu, Act::sigmoid},
   };
 
-  // 1. load train vectors + targets
+  std::mt19937 rng(cfg.seed);
+
+  // load data
   Dataset train;
   Dataset test;
   if (!train.load_features(cfg.train_pixels)) {
     exit(1);
-  };
+  }
   if (!train.load_targets(cfg.train_labels)) {
     exit(1);
-  };
+  }
   if (!test.load_features(cfg.test_pixels)) {
     exit(1);
-  };
-  // 2. carve validation slice out of train
+  }
   Dataset val = train.create_validation(cfg.val_share);
 
-  std::cout << "train " << train.features().size() << "x"
-            << train.features().front().size() << ", val " << val.features().size()
-            << "x" << val.features().front().size() << ", test "
-            << test.features().size() << "x" << test.features().front().size()
+  std::cout << "train " << train.features().size() << ", val "
+            << val.features().size() << ", test " << test.features().size()
             << '\n';
 
-  // 3. create network
-  std::mt19937 rng(cfg.seed);
-  Network net(cfg.widths, cfg.acts, rng);
-
-  // 4. define loss function
-  // 5. define optimizer
-  // 6. training loop until epoch == n:
-  //    shuffle order with the same RNG
-  //    for each batch:
-  //      reset gradients
-  //      forward pass
-  //      loss
-  //      backpropagate
-  //      optimize weights
-  //    evaluate on validation
-  //    print epoch, val accuracy, seconds
-  //    check 600s budget
-  // 7. write train predictions
-  // 8. write test predictions
-  if (!Dataset::save_targets(cfg.train_predictions, train.targets()) ||
-      !Dataset::save_targets(cfg.test_predictions, test.targets())) {
+  // data validation
+  if (train.features().front().size() != cfg.widths.front() ||
+      test.features().front().size() != cfg.widths.front() ||
+      cfg.widths.back() != 10) {
+    std::cerr << "network widths do not match the data\n";
     exit(1);
   }
 
-  std::cout << "thinking...";
+  Network net(cfg.widths, cfg.acts, rng);
+
+  // order[m] = row of the m-th training step, reshuffled every epoch
+  std::vector<std::size_t> order(train.features().size());
+  for (std::size_t k = 0; k < order.size(); ++k) {
+    order[k] = k;
+  }
+
+  // reused every epoch
+  std::vector<double> val_pred;
+
+  // training loop
+  for (int t = 0; t < cfg.epochs; ++t) {
+    std::shuffle(order.begin(), order.end(), rng);
+
+    // linear epsilon decay
+    // eps(t) = eps(0) (1 - t/epochs)
+    const double eps = cfg.epsilon * (1.0 - double(t) / cfg.epochs);
+
+    double E = 0.0; // E = (1/n) sum_k E_k
+
+    for (std::size_t first = 0; first < order.size(); first += cfg.batch_size) {
+      const std::size_t p =
+          std::min(cfg.batch_size, order.size() - first); // may be short
+
+      // one minibatch
+      // accumulate p gradients, then one step
+      net.clear_grad();
+      for (std::size_t m = first; m < first + p; ++m) {
+        net.forward(train.features()[order[m]]);
+        E += net.loss(train.targets()[order[m]]) / order.size();
+        net.backward(train.targets()[order[m]], p);
+      }
+      net.step(eps);
+    }
+
+    // training info
+    std::cout << "epoch " << t + 1 << "  E = " << E;
+
+    if (!val.features().empty()) {
+      val_pred.clear();
+      net.predict(val.features(), val_pred);
+      std::cout << "  val acc = " << val.accuracy(val_pred);
+    }
+    std::cout << '\n';
+  }
+
+  // predict and save results
+  std::vector<double> train_pred;
+  net.predict(train.features(), train_pred);
+  net.predict(val.features(),
+              train_pred); // val is the tail of train
+
+  std::vector<double> test_pred;
+  net.predict(test.features(), test_pred);
+
+  if (!Dataset::save_predictions(cfg.train_predictions, train_pred) ||
+      !Dataset::save_predictions(cfg.test_predictions, test_pred)) {
+    exit(1);
+  }
+
   return 0;
 }

@@ -18,17 +18,23 @@ public:
   // dE/dw_ji := 0
   void clear_grad();
 
+  // y[0] = x_k
   // xi_j = sum_{i in j<-} w_ji y_i (y_0 = 1), y_j = sigma_j(xi_j)
-  void forward(const double *x);
+  void forward(const std::vector<double> &x_k);
 
   // dE/dw_ji += (1/p) dE_k/dw_ji, dE_k/dw_ji = dE_k/dy_j sigma_j'(xi_j) y_i
-  void backward(const double *d, std::size_t p);
+  // d_kj = [j == d_k], d_k = desired class of x_k
+  void backward(double d_k, std::size_t p);
 
   // w_ji := w_ji - eps dE/dw_ji
   void step(double eps);
 
-  // y[L] = network output
-  const std::vector<double> &output();
+  // E_k = 1/2 sum_j (y_j - d_kj)^2, d_kj = [j == d_k]
+  double loss(double d_k);
+
+  // appends predicted class = argmax_j y_j for each x_k
+  void predict(const std::vector<std::vector<double>> &x,
+               std::vector<double> &out);
 
 private:
   static bool fail(const std::string &msg);

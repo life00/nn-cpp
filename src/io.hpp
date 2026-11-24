@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -11,16 +10,18 @@ public:
   // moves the last share of rows into the returned Dataset
   Dataset create_validation(double share);
 
-  const std::vector<std::vector<uint8_t>> &features();
-  const std::vector<uint8_t> &targets();
+  const std::vector<std::vector<double>> &features() const;
+  const std::vector<double> &targets() const;
+  // share of predictions equal to the labels
+  double accuracy(const std::vector<double> &predictions) const;
 
-  static bool save_targets(const std::string &path,
-                           const std::vector<uint8_t> &labels);
+  static bool save_predictions(const std::string &path,
+                               const std::vector<double> &predictions);
 
 private:
   static bool fail(const std::string &msg);
 
-  std::vector<std::vector<uint8_t>>
-      pixels;                  // one image per row, all rows the same length
-  std::vector<uint8_t> labels; // one per row
+  std::vector<std::vector<double>>
+      pixels; // one image per row, x_k = pixel / 255, all rows the same length
+  std::vector<double> labels; // one class 0-9 per row
 };
