@@ -5,5 +5,5 @@
 - [x] switch to classes
 - [x] training loop with validation accuracy, reach >= 88 %
 - [x] whole run under 600 s, test on aura
-- [ ] explain and modify any line live
-- [ ] include derivation
+- [x] explain and modify any line live
+- [x] include derivation
