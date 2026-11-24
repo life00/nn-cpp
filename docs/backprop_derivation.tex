@@ -1,0 +1,212 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=1.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{multicol}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,decorations.pathreplacing}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\abovedisplayskip}{3pt}
+\setlength{\belowdisplayskip}{3pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
+
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\into}{_{\leftarrow}}
+\newcommand{\out}{^{\rightarrow}}
+\newcommand{\Ey}[1]{\textcolor{BrickRed}{\pd{E_k}{y_{#1}}}}
+\newcommand{\hsec}[1]{\par\vspace{4pt}{\large\bfseries #1}\par\vspace{1pt}\hrule\vspace{3pt}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\begin{document}
+\begin{center}
+  {\LARGE\bfseries Backpropagation -- derivation}
+\end{center}
+
+\hsec{1\quad Notation}
+\begin{multicols}{2}
+\begin{tabular}{@{}ll@{}}
+$X,Y\subseteq Z$ & input, output, all neurons \\
+$\ell=0,\dots,L$ & layers;\; $X$ = layer $0$,\; $Y$ = layer $L$ \\
+$n_\ell$ & number of neurons in layer $\ell$ \\
+$\xi_j$ & inner potential of $j$ \\
+$y_j$ & output of $j$;\; $y_0=1$,\; $0\notin Z$ \\
+$w_{ji}$ & weight $i\to j$;\; $w_{j0}=b_j$ (bias) \\
+$\sigma_j$ & activation of $j$ (differentiable)
+\end{tabular}
+
+\begin{tabular}{@{}ll@{}}
+$j\into$ & $\{i : i\to j\}$ = layer $\ell-1$ $\cup\,\{0\}$ ($j$ in layer $\ell$) \\
+$j\out$ & $\{r : j\to r\}$ = layer $\ell+1$ \\
+$\mathcal T$ & $\{(\vec x_k,\vec d_k)\mid k=1,\dots,n\}$ \\
+$c_k$ & class of $\vec x_k$,\; $c_k\in\{0,\dots,9\}$ \\
+$d_{kj}$ & desired output of $j\in Y$ for $\vec x_k$ \\
+$\mathcal B,\ p$ & minibatch of samples,\; $p=|\mathcal B|$ \\
+$t,\ T$ & epoch $t=0,\dots,T-1$ \\
+$\varepsilon(t)$ & learning rate,\; $0<\varepsilon(t)\le 1$
+\end{tabular}
+\end{multicols}
+
+\hsec{2\quad The network}
+Layered, fully connected: $n_0=784$ (pixels),\; $n_1=128$ (hidden, ReLU),\; $n_2=10$ (output, logistic),\; $L=2$.
+\[
+\text{input: } y_i=x_{ki}=\frac{\text{pixel}_i}{255}\in[0,1]\quad(i\in X),
+\qquad
+\text{target (one-hot): } d_{kj}=[\,j=c_k\,]\quad(j\in Y),
+\qquad
+\text{prediction: } \hat c_k=\arg\max_{j\in Y} y_j
+\]
+\[
+\text{initialization: } w_{ji},\ w_{j0}\sim\mathcal N\!\bigl(0,\ \tfrac{1}{n_{\ell-1}}\bigr)\quad(j \text{ in layer } \ell)
+\]
+
+\hsec{3\quad Forward pass, error, update}
+\[
+\xi_j=\sum_{i\in j\into} w_{ji}\,y_i=w_{j0}+\sum_{i\in\text{layer }\ell-1} w_{ji}\,y_i,\qquad
+y_j=\sigma_j(\xi_j)=y_j(\vec w,\vec x_k)\quad(\text{layer by layer } \ell=1,\dots,L)
+\]
+\[
+E_k(\vec w)=\tfrac12\sum_{j\in Y}\bigl(y_j(\vec w,\vec x_k)-d_{kj}\bigr)^2,\qquad
+E(\vec w)=\frac1p\sum_{k\in\mathcal B} E_k(\vec w),\qquad
+\textcolor{ForestGreen}{\pd{E}{w_{ji}}}=\frac1p\sum_{k\in\mathcal B}\textcolor{blue}{\pd{E_k}{w_{ji}}}
+\]
+\[
+\text{minibatch step: } w_{ji}:=w_{ji}-\varepsilon(t)\,\pd{E}{w_{ji}}
+\;\Leftrightarrow\;\vec w:=\vec w-\varepsilon(t)\nabla E(\vec w),
+\qquad
+\varepsilon(t)=\varepsilon(0)\Bigl(1-\frac tT\Bigr)
+\]
+Each epoch shuffles $\mathcal T$ and splits it into consecutive minibatches of $p\le32$ samples, one step per minibatch;
+$\varepsilon(0)=0.5$, $T=50$.
+(\,$p=1$: online gradient descent;\; $p=n$: batch gradient descent.)
+
+\hsec{4\quad Derivation, layer by layer}
+\textbf{(a) Any weight $w_{ji}$} (chain rule through $y_j$ and $\xi_j$):
+\[
+\textcolor{blue}{\pd{E_k}{w_{ji}}}
+=\Ey{j}\cdot\pd{y_j}{w_{ji}}
+=\Ey{j}\cdot\textcolor{ForestGreen}{\pd{y_j}{\xi_j}}\cdot\textcolor{Brown}{\pd{\xi_j}{w_{ji}}}
+=\boxed{\Ey{j}\cdot\sigma_j'(\xi_j)\cdot y_i}
+\qquad\text{bias } (i=0,\ y_0=1)\text{: }\
+\pd{E_k}{w_{j0}}=\Ey{j}\cdot\sigma_j'(\xi_j)
+\]
+\[
+\textcolor{ForestGreen}{\pd{y_j}{\xi_j}}=\pd{\sigma_j(\xi_j)}{\xi_j}=\sigma_j'(\xi_j),
+\qquad
+\textcolor{Brown}{\pd{\xi_j}{w_{ji}}}=\pd{\bigl(\sum_{r\in j\into}w_{jr}y_r\bigr)}{w_{ji}}=y_i
+\]
+\textbf{(b) Output layer $L$, $j\in Y$:}
+\[
+\Ey{j}=\pd{\bigl(\frac12\sum_{r\in Y}(y_r-d_{kr})^2\bigr)}{y_j}=\boxed{y_j-d_{kj}}
+\]
+\textbf{(c) Hidden layer $\ell$, $j\in Z\setminus(X\cup Y)$} (chain rule through all $r\in j\out$, which lie in layer $\ell+1$, already computed):
+\[
+\Ey{j}=\sum_{r\in j\out}\Ey{r}\cdot\pd{y_r}{y_j}
+=\sum_{r\in j\out}\Ey{r}\cdot\textcolor{ForestGreen}{\pd{y_r}{\xi_r}}\cdot\textcolor{Brown}{\pd{\xi_r}{y_j}}
+=\boxed{\sum_{r\in j\out}\Ey{r}\cdot\sigma_r'(\xi_r)\cdot w_{rj}}
+\]
+\[
+\textcolor{ForestGreen}{\pd{y_r}{\xi_r}}=\pd{\sigma_r(\xi_r)}{\xi_r}=\sigma_r'(\xi_r),
+\qquad
+\textcolor{Brown}{\pd{\xi_r}{y_j}}=\pd{\bigl(\sum_{s\in r\into}w_{rs}y_s\bigr)}{y_j}=w_{rj}
+\]
+\textbf{(d) Input layer, $j\in X$:} skipped for training (no incoming weights).
+
+\hsec{5\quad Activations}
+\textbf{(e) Logistic} (output layer):\;
+$\sigma(\xi)=\dfrac{1}{1+e^{-\xi}}$,\quad
+$\sigma'(\xi)=\dfrac{e^{-\xi}}{(1+e^{-\xi})^2}=\sigma(\xi)\bigl(1-\sigma(\xi)\bigr)$
+\;$\Rightarrow$\; $\boxed{\sigma_j'(\xi_j)=y_j(1-y_j)}$.
+
+\textbf{(f) ReLU} (hidden layer):\;
+$\sigma(\xi)=\max(0,\xi)$,\quad
+$\boxed{\sigma_j'(\xi_j)=[\,\xi_j>0\,]}$ \;($0$ at $\xi_j=0$, where $\sigma$ is not differentiable).
+
+\textbf{(g) Put together for $784\to128\to10$} ($r\in Y$, $j$ hidden, $i\in X$):
+\[
+\pd{E_k}{w_{rj}}=\underbrace{(y_r-d_{kr})}_{\partial E_k/\partial y_r}\,y_r(1-y_r)\,y_j,
+\qquad
+\pd{E_k}{y_j}=\sum_{r\in Y}(y_r-d_{kr})\,y_r(1-y_r)\,w_{rj},
+\qquad
+\pd{E_k}{w_{ji}}=\pd{E_k}{y_j}\,[\,\xi_j>0\,]\,x_{ki}
+\]
+
+\hsec{6\quad Algorithm}
+\begin{minipage}[t]{0.55\textwidth}
+\textbf{for} $t=0,\dots,T-1$: shuffle $\mathcal T$;\; \textbf{for} each minibatch $\mathcal B$:
+\begin{enumerate}\setlength{\itemsep}{1pt}\setlength{\topsep}{2pt}
+  \setcounter{enumi}{-1}
+  \item $\mathcal E_{ji}:=0$;\quad \textbf{for} $k\in\mathcal B$:
+  \item \textbf{forward:} $\xi_j,\ y_j=y_j(\vec w,\vec x_k)$ for all $j\in Z$ (store them)
+  \item \textbf{backward:} $\Ey{j}$ for all $j$, layers $L\to1$, by (b), (c)
+  \item $\displaystyle \pd{E_k}{w_{ji}}:=\Ey{j}\cdot\sigma_j'(\xi_j)\cdot y_i$ for all $w_{ji}$, by (a)
+  \item $\mathcal E_{ji}:=\mathcal E_{ji}+\frac1p\pd{E_k}{w_{ji}}$
+  \item after the minibatch ($\mathcal E_{ji}=\pd{E}{w_{ji}}$):\; $w_{ji}:=w_{ji}-\varepsilon(t)\,\mathcal E_{ji}$
+\end{enumerate}
+Complexity: $O(|\vec w|\cdot n)$ per epoch -- linear in network size $\times$ training set size.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.43\textwidth}
+\vspace{-6pt}
+\centering
+\begin{tikzpicture}[
+  n/.style={circle,draw,minimum size=6mm,inner sep=0pt,font=\small},
+  b/.style={n,fill=gray!20},
+  w/.style={-{Stealth[length=2mm]},thick},
+  lbl/.style={font=\scriptsize,midway,fill=white,inner sep=1pt},
+  x=2.1cm,y=0.85cm]
+  % layer l-1
+  \node[b] (0) at (0,2) {$0$};
+  \node[n] (i) at (0,1) {$i$};
+  \node[n] (i2) at (0,0) {};
+  % layer l
+  \node[n,very thick] (j) at (1,1) {$j$};
+  % layer l+1
+  \node[n] (r) at (2,1.6) {$r$};
+  \node[n] (r2) at (2,0.4) {$r'$};
+  % forward weights
+  \draw[w,gray] (0) -- node[font=\scriptsize,pos=0.6,above,sloped,inner sep=1pt,text=gray]{$w_{j0}=b_j$} (j);
+  \draw[w] (i) -- node[lbl,above]{$w_{ji}$} (j);
+  \draw[w,gray] (i2) -- (j);
+  \draw[w] (j) -- node[lbl,above,sloped]{$w_{rj}$} (r);
+  \draw[w] (j) -- node[lbl,below,sloped]{$w_{r'j}$} (r2);
+  % annotations
+  \node[font=\scriptsize,left=1pt] at (0.west) {$y_0=1$};
+  \node[font=\scriptsize,left=1pt] at (i.west) {$y_i$};
+  \node[font=\scriptsize,below=1pt,align=center] at (j.south) {$\xi_j$\\$y_j=\sigma_j(\xi_j)$};
+  \node[font=\scriptsize,right=1pt] at (r.east) {$\textcolor{BrickRed}{\partial E_k/\partial y_r}$};
+  \node[font=\scriptsize,right=1pt] at (r2.east) {$\textcolor{BrickRed}{\partial E_k/\partial y_{r'}}$};
+  % backward flow
+  \draw[-{Stealth[length=2mm]},BrickRed,dashed] (2,2.25) to[bend right=25] node[font=\scriptsize,above]{backprop} (1.12,1.45);
+  % sets
+  \draw[dashed,rounded corners,gray] (-0.2,-0.45) rectangle (0.2,2.45);
+  \node[font=\scriptsize,below] at (0,-0.45) {$j\into$};
+  \draw[dashed,rounded corners,gray] (1.8,-0.05) rectangle (2.2,2.05);
+  \node[font=\scriptsize,below] at (2,-0.05) {$j\out$};
+  \node[font=\scriptsize,gray] at (0,-1.4) {layer $\ell-1$};
+  \node[font=\scriptsize,gray] at (1,-1.4) {layer $\ell$};
+  \node[font=\scriptsize,gray] at (2,-1.4) {layer $\ell+1$};
+\end{tikzpicture}
+\end{minipage}
+
+\hsec{7\quad Symbols in the code}
+\begin{multicols}{2}
+\begin{tabular}{@{}ll@{}}
+$\xi_j$,\; $y_j$ & \code{xi[l][j]},\; \code{y[l][j]};\; \code{y[0]} $=\vec x_k$ \\
+$w_{ji}$,\; $w_{j0}$ & \code{w[l][j][i]},\; \code{b[l][j]} \\
+$\sigma_j$,\; $\sigma_j'(\xi_j)$ & \code{act},\; \code{dact} $\to$ \code{dyxi} \\
+$c_k$ & \code{d\_k} (class index) \\
+$\varepsilon(t)$,\; $p$ & \code{eps},\; \code{p}
+\end{tabular}
+
+\begin{tabular}{@{}ll@{}}
+$\partial E_k/\partial y_j$ & \code{dey[l][j]} \\
+$\partial E_k/\partial w_{ji}$,\; $\partial E_k/\partial w_{j0}$ & \code{dew\_k},\; \code{deb\_k} \\
+$\mathcal E_{ji}=\partial E/\partial w_{ji}$ & \code{dew[l][j][i]},\; \code{deb[l][j]} \\
+steps 0;\, 1;\, 2--4;\, 5 & \code{clear\_grad}; \code{forward}; \code{backward}; \code{step} \\
+$E_k$,\; $\hat c_k$ & \code{loss},\; \code{predict}
+\end{tabular}
+\end{multicols}
+In the code $w_{j0}$ is stored apart in \code{b}, so \code{i} in \code{w[l][j][i]} runs over the $n_{\ell-1}$ neurons of layer $\ell-1$ only.
+\end{document}
