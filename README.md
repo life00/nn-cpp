@@ -18,7 +18,7 @@ A neural network from scratch in C++, trained with backpropagation on [Fashion-M
 └── data/           dataset (not tracked)
 ```
 
-## Usage
+## Build and run
 
 ```bash
 g++ -std=c++20 -O3 src/*.cpp -o network
