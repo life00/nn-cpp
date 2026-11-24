@@ -1,5 +1,7 @@
 # nn-cpp
 
+![Backpropagation through neuron j](docs/backprop_diagram.png)
+
 A feed-forward neural network written from scratch in C++20 (no linear-algebra or ML libraries), trained with backpropagation and minibatch gradient descent to classify [Fashion-MNIST](https://github.com/zalandoresearch/fashion-mnist). The network is a 784–128–10 MLP with ReLU then sigmoid. It reaches about 90 % test accuracy in roughly 5 minutes on a single CPU core.
 
 Backpropagation derivation: [docs/backprop_derivation.pdf](docs/backprop_derivation.pdf).
@@ -14,7 +16,7 @@ Backpropagation derivation: [docs/backprop_derivation.pdf](docs/backprop_derivat
 │   ├── net.{hpp,cpp}   Network: forward, backward, gradient step, predict
 │   └── tests/
 │       └── xor.cpp     XOR sanity check (not part of the main build)
-├── docs/               backpropagation derivation (LaTeX source and PDF)
+├── docs/               backpropagation derivation (LaTeX, PDF) and diagram
 ├── evaluator/          accuracy script for prediction files
 └── data/               Fashion-MNIST CSVs (not tracked)
 ```
