@@ -14,11 +14,11 @@ struct Config {
   std::string test_pixels;
   std::string train_predictions;
   std::string test_predictions;
-  double val_share = 0;
-  int seed = 0;
-  int epochs = 0;
+  float val_share = 0;
+  std::size_t seed = 0;
+  std::size_t epochs = 0;
   std::size_t batch_size = 0;
-  double epsilon = 0;
+  float epsilon = 0;
   std::vector<std::size_t> widths;
   std::vector<Act> acts;
 };
@@ -31,12 +31,12 @@ int main() {
       .test_pixels = "data/fashion_mnist_test_vectors.csv",
       .train_predictions = "train_predictions.csv",
       .test_predictions = "test_predictions.csv",
-      .val_share = 0.0,
+      .val_share = 0.0f,
       // training parameters
       .seed = 42,
       .epochs = 50,
       .batch_size = 32,
-      .epsilon = 0.5,
+      .epsilon = 0.5f,
       .widths = {784, 128, 10},
       .acts = {Act::relu, Act::sigmoid},
   };
@@ -78,17 +78,17 @@ int main() {
   }
 
   // reused every epoch
-  std::vector<double> val_pred;
+  std::vector<std::size_t> val_pred;
 
   // training loop
-  for (int t = 0; t < cfg.epochs; ++t) {
+  for (std::size_t t = 0; t < cfg.epochs; ++t) {
     std::shuffle(order.begin(), order.end(), rng);
 
     // linear epsilon decay
     // eps(t) = eps(0) (1 - t/epochs)
-    const double eps = cfg.epsilon * (1.0 - double(t) / cfg.epochs);
+    const float eps = cfg.epsilon * (1.0f - float(t) / cfg.epochs);
 
-    double E = 0.0; // E = (1/n) sum_k E_k
+    float E = 0.0f; // E = (1/n) sum_k E_k
 
     for (std::size_t first = 0; first < order.size(); first += cfg.batch_size) {
       const std::size_t p =
@@ -117,12 +117,12 @@ int main() {
   }
 
   // predict and save results
-  std::vector<double> train_pred;
+  std::vector<std::size_t> train_pred;
   net.predict(train.features(), train_pred);
   net.predict(val.features(),
               train_pred); // val is the tail of train
 
-  std::vector<double> test_pred;
+  std::vector<std::size_t> test_pred;
   net.predict(test.features(), test_pred);
 
   if (!Dataset::save_predictions(cfg.train_predictions, train_pred) ||

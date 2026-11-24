@@ -17,7 +17,7 @@ bool Dataset::load_features(const std::string &path) {
     return fail(path + ": cannot open");
 
   pixels.clear();
-  std::vector<double> row_px;
+  std::vector<float> row_px;
   row_px.reserve(1024);
   std::string line;
   while (std::getline(in, line)) {
@@ -31,7 +31,7 @@ bool Dataset::load_features(const std::string &path) {
       if (v < 0 || v > 255)
         return fail(path + ":" + std::to_string(pixels.size() + 1) +
                     ": bad value " + std::to_string(v));
-      row_px.push_back(v / 255.0); // x_k = pixel / 255
+      row_px.push_back(v / 255.0f); // x_k = pixel / 255
       if (*end != ',')
         break; // last field of the row
       p = end + 1;
@@ -62,7 +62,7 @@ bool Dataset::load_targets(const std::string &path) {
     if (end == line.c_str() || *end != '\0' || v < 0 || v > 9)
       return fail(path + ":" + std::to_string(labels.size() + 1) +
                   ": bad label");
-    labels.push_back(double(v));
+    labels.push_back(size_t(v));
   }
   if (pixels.empty())
     return fail(path + ": load features first");
@@ -72,11 +72,11 @@ bool Dataset::load_targets(const std::string &path) {
   return true;
 }
 
-Dataset Dataset::create_validation(const double share) {
+Dataset Dataset::create_validation(const float share) {
   Dataset val;
   const size_t n = pixels.size();
   // val is the tail of this, so this || val is the original input order
-  const size_t n_val = size_t(share * double(n));
+  const size_t n_val = size_t(share * float(n));
   if (n_val == 0 || n_val >= n || labels.size() != n)
     return val; // no split
   const size_t n_train = n - n_val;
@@ -91,28 +91,28 @@ Dataset Dataset::create_validation(const double share) {
   return val;
 }
 
-const std::vector<std::vector<double>> &Dataset::features() const {
+const std::vector<std::vector<float>> &Dataset::features() const {
   return pixels;
 }
 
-const std::vector<double> &Dataset::targets() const { return labels; }
+const std::vector<size_t> &Dataset::targets() const { return labels; }
 
-double Dataset::accuracy(const std::vector<double> &predictions) const {
+float Dataset::accuracy(const std::vector<size_t> &predictions) const {
   assert(predictions.size() == labels.size());
   size_t correct = 0;
   for (size_t k = 0; k < labels.size(); ++k) {
     correct += predictions[k] == labels[k];
   }
-  return double(correct) / labels.size();
+  return float(correct) / labels.size();
 }
 
 bool Dataset::save_predictions(const std::string &path,
-                               const std::vector<double> &predictions) {
+                               const std::vector<size_t> &predictions) {
   std::ofstream out(path);
   if (!out)
     return fail(path + ": cannot open");
-  for (const double label : predictions)
-    out << label << '\n'; // whole doubles stream as bare digits
+  for (const size_t label : predictions)
+    out << label << '\n';
   out.close();
   if (!out)
     return fail(path + ": write failed");
